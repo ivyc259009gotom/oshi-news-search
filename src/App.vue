@@ -62,7 +62,7 @@ const noImageUrl = 'https://placehold.co/300x180?text=No+Image'
 
 // GNews APIのURLを作る
 const createGNewsUrl = (searchWord, target, useLang = true) => {
-  let url = `https://gnews.io/api/v4/search?q=${encodeURIComponent(searchWord)}&max=10&sortby=publishedAt&in=title,description,content&apikey=${apiKey}`
+  let url = `https://gnews.io/api/v4/search?q=${encodeURIComponent(searchWord)}&max=10&sortby=publishedAt&in=title&apikey=${apiKey}`
 
   if (useLang && target.lang) {
     url += `&lang=${target.lang}`
@@ -139,7 +139,12 @@ const searchNews = async () => {
     const data = await response.json()
 
     // 取得した記事をarticlesに入れる
-    articles.value = data.articles || []
+    const fetchedArticles = data.articles || []
+
+    // タイトルが同じ記事を重複表示しないようにする
+    articles.value = fetchedArticles.filter((article, index, self) => {
+      return index === self.findIndex((item) => item.title === article.title)
+    })
   } catch (error) {
     errorMessage.value = 'ニュースの取得に失敗しました。時間をおいて再度お試しください。'
     console.error(error)
@@ -219,7 +224,7 @@ const formatDate = (dateString) => {
     <p class="app-description">日本語・英語のニュースから、推しに関する最新記事を検索できます。</p>
 
     <div class="search-area">
-      <input v-model="keyword" type="text" placeholder="俳優名・作品名・アーティスト名を入力" />
+      <input v-model="keyword" type="text" placeholder="人名・作品名などを入力" />
 
       <select v-model="searchTarget">
         <option v-for="target in searchTargets" :key="target.value" :value="target.value">
@@ -328,83 +333,136 @@ const formatDate = (dateString) => {
 
 <style scoped>
 .app {
-  max-width: 900px;
+  max-width: 1100px;
   margin: 0 auto;
-  padding: 32px;
-  font-family: sans-serif;
+  padding: 40px 24px;
+}
+
+:global(body) {
+  margin: 0;
+  background-color: #faf7ff;
+  color: #333;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
 }
 
 h1 {
+  margin-bottom: 8px;
+  color: #6f5aa7;
+  font-size: 36px;
   text-align: center;
-  color: #3f51b5;
 }
 
 .search-area {
   display: flex;
-  gap: 8px;
-  margin: 24px 0;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+  max-width: 900px;
+  box-sizing: border-box;
+  padding: 24px;
+  margin: 0 auto 24px;
+  background-color: #ffffff;
+  border: 1px solid #eadff8;
+  border-radius: 18px;
+  box-shadow: 0 8px 24px rgba(111, 90, 167, 0.12);
 }
 
-input {
+.search-area input,
+.search-area select {
+  height: 44px;
+  padding: 0 14px;
+  border: 1px solid #d8c9ee;
+  border-radius: 10px;
+  font-size: 15px;
+  outline: none;
+  background-color: #fff;
+}
+
+.search-area input {
   flex: 1;
-  padding: 10px;
-  font-size: 16px;
+  min-width: 320px;
 }
 
-select {
-  padding: 10px;
-  font-size: 16px;
+.search-area input:focus,
+.search-area select:focus {
+  border-color: #8d79c7;
+  box-shadow: 0 0 0 3px rgba(141, 121, 199, 0.16);
 }
 
 button {
-  padding: 10px 20px;
-  font-size: 16px;
-  background-color: #3f51b5;
-  color: white;
+  height: 44px;
+  min-width: 88px;
+  padding: 0 18px;
   border: none;
-  border-radius: 4px;
+  border-radius: 10px;
+  background-color: #8d79c7;
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
   cursor: pointer;
+  white-space: nowrap;
+}
+
+button:hover {
+  background-color: #7661b5;
 }
 
 button:disabled {
-  background-color: #aaa;
+  background-color: #c8bfdc;
   cursor: not-allowed;
 }
 
 .article-list {
   display: grid;
-  gap: 16px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  width: 100%;
+  max-width: 1100px;
+  margin: 24px auto 0;
 }
 
 .article-card {
   display: flex;
-  gap: 16px;
+  flex-direction: column;
   padding: 16px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  background-color: white;
+  background-color: #ffffff;
+  border: 1px solid #eadff8;
+  border-radius: 18px;
+  box-shadow: 0 8px 20px rgba(111, 90, 167, 0.1);
+  overflow: hidden;
 }
 
 .article-image {
-  width: 180px;
-  height: 110px;
+  width: 100%;
+  height: 180px;
   object-fit: cover;
-  border-radius: 6px;
+  border-radius: 14px;
+  background-color: #f4effc;
 }
 
 .article-content h2 {
-  margin: 0 0 8px;
-  font-size: 20px;
+  margin: 14px 0 8px;
+  color: #333;
+  font-size: 18px;
+  line-height: 1.5;
 }
 
 .source,
 .date {
-  color: #666;
-  font-size: 14px;
+  color: #777;
+  font-size: 13px;
 }
 
 .description {
-  margin: 8px 0;
+  margin: 10px 0 16px;
+  color: #555;
+  font-size: 14px;
+  line-height: 1.7;
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
@@ -412,12 +470,20 @@ button:disabled {
 }
 
 a {
-  color: #3f51b5;
-  font-weight: bold;
+  color: #7b61c9;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
 }
 
 .history-area {
-  margin: 16px 0 24px;
+  width: 100%;
+  max-width: 900px;
+  box-sizing: border-box;
+  margin: 16px auto 24px;
 }
 
 .history-area p {
@@ -427,13 +493,18 @@ a {
 
 .history-button {
   margin: 0 8px 8px 0;
-  padding: 6px 12px;
-  background-color: #eef0ff;
-  color: #3f51b5;
-  border: 1px solid #c5cae9;
-  border-radius: 20px;
+  padding: 7px 14px;
+  background-color: #f4effc;
+  color: #6f5aa7;
+  border: 1px solid #d8c9ee;
+  border-radius: 999px;
   cursor: pointer;
   font-size: 14px;
+  font-weight: 600;
+}
+
+.history-button:hover {
+  background-color: #e9def8;
 }
 
 .favorite-button {
@@ -482,13 +553,18 @@ a {
 }
 
 .clear-history-button {
-  padding: 6px 10px;
-  background-color: #f5f5f5;
-  color: #555;
-  border: 1px solid #ccc;
-  border-radius: 4px;
+  padding: 8px 12px;
+  background-color: #ffffff;
+  color: #6f5aa7;
+  border: 1px solid #d8c9ee;
+  border-radius: 10px;
   cursor: pointer;
   font-size: 13px;
+  font-weight: 600;
+}
+
+.clear-history-button:hover {
+  background-color: #f4effc;
 }
 
 .filter-area {
@@ -514,16 +590,29 @@ a {
 }
 
 .reset-button {
-  background-color: #757575;
+  min-width: 100px;
+  background-color: #f2eef8;
+  color: #6f5aa7;
+  border: 1px solid #d8c9ee;
 }
 
 .reset-button:hover {
-  background-color: #616161;
+  background-color: #e7def5;
 }
 
 .app-description {
-  text-align: center;
+  margin-bottom: 32px;
   color: #666;
-  margin-bottom: 24px;
+  text-align: center;
+  font-size: 15px;
+}
+
+.history-button,
+.favorite-button,
+.clear-history-button,
+.filter-area button {
+  height: auto;
+  min-width: auto;
+  white-space: nowrap;
 }
 </style>
