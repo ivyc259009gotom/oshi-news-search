@@ -54,6 +54,12 @@ const errorMessage = ref('')
 // 検索したかどうか
 const hasSearched = ref(false)
 
+// 最後に検索したキーワード
+const searchedKeyword = ref('')
+
+// 最後に検索した言語
+const searchedLanguage = ref('')
+
 // GNews APIキー
 const apiKey = import.meta.env.VITE_GNEWS_API_KEY
 
@@ -124,6 +130,9 @@ const searchNews = async () => {
     // 選択中の検索対象を取得する
     const selectedTarget = searchTargets.find((target) => target.value === searchTarget.value)
 
+    searchedKeyword.value = searchWord
+    searchedLanguage.value = selectedTarget.label
+
     // GNews APIのURLを作る
     const url = createGNewsUrl(searchWord, selectedTarget, true)
 
@@ -167,6 +176,8 @@ const resetSearch = () => {
   errorMessage.value = ''
   hasSearched.value = false
   showFavoritesOnly.value = false
+  searchedKeyword.value = ''
+  searchedLanguage.value = ''
 }
 
 // 検索履歴をすべて削除する
@@ -176,11 +187,11 @@ const clearSearchHistory = () => {
 }
 
 // お気に入りボタンを押したときの処理
-const toggleFavorite = (articleUrl) => {
-  if (favorites.value.includes(articleUrl)) {
-    favorites.value = favorites.value.filter((url) => url !== articleUrl)
+const toggleFavorite = (article) => {
+  if (favorites.value.some((favorite) => favorite.url === article.url)) {
+    favorites.value = favorites.value.filter((favorite) => favorite.url !== article.url)
   } else {
-    favorites.value.push(articleUrl)
+    favorites.value.push(article)
   }
 
   // お気に入りの状態をブラウザに保存する
@@ -189,13 +200,15 @@ const toggleFavorite = (articleUrl) => {
 
 // お気に入り済みかどうかを判定する
 const isFavorite = (articleUrl) => {
-  return favorites.value.includes(articleUrl)
+  return favorites.value.some((favorite) => favorite.url === articleUrl)
 }
 
 // 画面に表示する記事一覧
 const displayedArticles = computed(() => {
   if (showFavoritesOnly.value) {
-    return articles.value.filter((article) => favorites.value.includes(article.url))
+    return articles.value.filter((article) =>
+      favorites.value.some((favorite) => favorite.url === article.url),
+    )
   }
 
   return articles.value
@@ -224,7 +237,12 @@ const formatDate = (dateString) => {
     <p class="app-description">日本語・英語のニュースから、推しに関する最新記事を検索できます。</p>
 
     <div class="search-area">
-      <input v-model="keyword" type="text" placeholder="人名・作品名などを入力" />
+      <input
+        v-model="keyword"
+        type="text"
+        placeholder="人名・作品名などを入力"
+        @keyup.enter="searchNews"
+      />
 
       <select v-model="searchTarget">
         <option v-for="target in searchTargets" :key="target.value" :value="target.value">
@@ -238,6 +256,8 @@ const formatDate = (dateString) => {
 
       <button class="reset-button" @click="resetSearch">リセット</button>
     </div>
+
+    <p class="search-note">※ 関連性を高めるため、記事タイトルを中心に検索しています。</p>
 
     <div v-if="searchHistory.length > 0" class="history-area">
       <div class="history-header">
@@ -269,11 +289,15 @@ const formatDate = (dateString) => {
       検索結果がありません。
     </p>
 
+    <p v-if="hasSearched && searchedKeyword" class="search-condition">
+      検索キーワード：{{ searchedKeyword }} / 言語：{{ searchedLanguage }}
+    </p>
+
     <p
       v-if="hasSearched && !isLoading && !errorMessage && articles.length > 0"
       class="result-count"
     >
-      検索結果：{{ articles.length }}件
+      検索結果：{{ articles.length }}件表示
     </p>
 
     <div
@@ -285,7 +309,7 @@ const formatDate = (dateString) => {
       </button>
 
       <button :class="{ active: showFavoritesOnly }" @click="showFavoritesOnly = true">
-        お気に入りのみ
+        お気に入りのみ（{{ favorites.length }}件）
       </button>
     </div>
 
@@ -322,7 +346,7 @@ const formatDate = (dateString) => {
           </p>
 
           <a :href="article.url" target="_blank" rel="noopener noreferrer"> 記事を読む </a>
-          <button class="favorite-button" @click="toggleFavorite(article.url)">
+          <button class="favorite-button" @click="toggleFavorite(article)">
             {{ isFavorite(article.url) ? '♥ お気に入り済み' : '♡ お気に入り' }}
           </button>
         </div>
@@ -333,13 +357,16 @@ const formatDate = (dateString) => {
 
 <style scoped>
 .app {
+  width: 100%;
   max-width: 1100px;
   margin: 0 auto;
   padding: 40px 24px;
+  box-sizing: border-box;
 }
 
 :global(body) {
   margin: 0;
+  overflow-x: hidden;
   background-color: #faf7ff;
   color: #333;
   font-family:
@@ -614,5 +641,142 @@ a:hover {
   height: auto;
   min-width: auto;
   white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .search-area {
+    flex-direction: column;
+    align-items: stretch;
+    max-width: 100%;
+  }
+
+  .search-area input {
+    min-width: 0;
+    width: 100%;
+    height: 44px;
+    box-sizing: border-box;
+  }
+
+  .search-area select {
+    width: 100%;
+    height: 44px;
+    box-sizing: border-box;
+  }
+
+  .search-area button {
+    width: 100%;
+    height: 44px;
+    box-sizing: border-box;
+  }
+
+  .article-list {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 700px) {
+  .app {
+    padding: 28px 16px;
+  }
+
+  h1 {
+    font-size: 30px;
+  }
+
+  .app-description {
+    font-size: 14px;
+  }
+
+  .search-note {
+    margin: -4px auto 24px;
+    font-size: 12px;
+    text-align: left;
+  }
+
+  .article-list {
+    grid-template-columns: 1fr;
+  }
+
+  .history-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .filter-area {
+    flex-wrap: wrap;
+  }
+}
+
+.search-area input[type='text'] {
+  height: 44px !important;
+  min-height: 44px;
+  padding: 0 14px;
+  box-sizing: border-box;
+  font-size: 15px;
+  line-height: 44px;
+}
+
+.search-area input,
+.search-area select,
+.search-area button {
+  height: 44px;
+  box-sizing: border-box;
+}
+
+.search-note {
+  width: 100%;
+  max-width: 900px;
+  box-sizing: border-box;
+  margin: -8px auto 28px;
+  padding: 0 8px;
+  color: #777;
+  font-size: 13px;
+  line-height: 1.6;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.search-condition {
+  max-width: 900px;
+  margin: 16px auto 4px;
+  color: #6f5aa7;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+@media (max-width: 700px) {
+  .search-note {
+    width: 100%;
+    max-width: 100%;
+    margin: -4px auto 24px;
+    padding: 0 8px;
+    box-sizing: border-box;
+    font-size: 12px;
+    line-height: 1.6;
+    text-align: center;
+    overflow-wrap: break-word;
+    word-break: normal;
+  }
+
+  .search-condition,
+  .result-count,
+  .filter-area,
+  .history-area {
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  .history-header {
+    margin-bottom: 12px;
+  }
+
+  .history-header p {
+    margin-bottom: 4px;
+  }
+
+  .clear-history-button {
+    margin-bottom: 6px;
+  }
 }
 </style>
