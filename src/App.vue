@@ -206,9 +206,7 @@ const isFavorite = (articleUrl) => {
 // 画面に表示する記事一覧
 const displayedArticles = computed(() => {
   if (showFavoritesOnly.value) {
-    return articles.value.filter((article) =>
-      favorites.value.some((favorite) => favorite.url === article.url),
-    )
+    return favorites.value
   }
 
   return articles.value
@@ -258,6 +256,12 @@ const formatDate = (dateString) => {
     </div>
 
     <p class="search-note">※ 関連性を高めるため、記事タイトルを中心に検索しています。</p>
+
+    <div v-if="favorites.length > 0" class="favorite-list-area">
+      <button class="favorite-list-button" @click="showFavoritesOnly = true">
+        お気に入り一覧を見る（{{ favorites.length }}件）
+      </button>
+    </div>
 
     <div v-if="searchHistory.length > 0" class="history-area">
       <div class="history-header">
@@ -314,13 +318,7 @@ const formatDate = (dateString) => {
     </div>
 
     <p
-      v-if="
-        hasSearched &&
-        !isLoading &&
-        !errorMessage &&
-        showFavoritesOnly &&
-        displayedArticles.length === 0
-      "
+      v-if="!isLoading && !errorMessage && showFavoritesOnly && displayedArticles.length === 0"
       class="no-result-message"
     >
       お気に入りに登録した記事はありません。
@@ -778,5 +776,34 @@ a:hover {
   .clear-history-button {
     margin-bottom: 6px;
   }
+
+  .favorite-list-area {
+    max-width: 100%;
+    margin: -8px auto 24px;
+    text-align: center;
+  }
+}
+
+.favorite-list-area {
+  max-width: 900px;
+  margin: -12px auto 24px;
+  text-align: center;
+}
+
+.favorite-list-button {
+  height: auto;
+  min-width: auto;
+  padding: 8px 14px;
+  background-color: #fff0f5;
+  color: #d81b60;
+  border: 1px solid #f8bbd0;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.favorite-list-button:hover {
+  background-color: #ffe4ef;
 }
 </style>
